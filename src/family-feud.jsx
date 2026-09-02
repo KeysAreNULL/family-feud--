@@ -316,12 +316,14 @@ export default function FamilyFeud() {
   const playSound = useCallback((type = "generic") => {
     const sounds = {
       correct: [
+        "https://cdn.pixabay.com/download/audio/2021/08/04/audio_86d0f3ff95.mp3?filename=game-show-buzz-13705.mp3",
         "https://cdn.pixabay.com/download/audio/2022/03/15/audio_ae3ae3d4a0.mp3?filename=short-success-sound-glockenspiel-treasure-video-game-6346.mp3",
         "https://cdn.pixabay.com/download/audio/2022/03/15/audio_0b9d5ca1ef.mp3?filename=bonus-collect-coin-1969.mp3",
       ],
       strike: [
-        "https://cdn.pixabay.com/download/audio/2021/08/04/audio_86d0f3ff95.mp3?filename=wrong-answer-129254.mp3",
+        "https://cdn.pixabay.com/download/audio/2021/05/22/audio_02c8021ba8.mp3?filename=wrong-answer-129254.mp3",
         "https://cdn.pixabay.com/download/audio/2022/04/29/audio_56d6e12f0b.mp3?filename=negative-beeps-59375.mp3",
+        "https://cdn.pixabay.com/download/audio/2022/02/10/audio_0d53c57a7b.mp3?filename=beep-error-126106.mp3",
       ],
       generic: [
         "https://cdn.pixabay.com/download/audio/2023/04/23/audio_0d4cc85a8d.mp3?filename=notification-sound-7062.mp3",
