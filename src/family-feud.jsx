@@ -108,6 +108,46 @@ const ANIM = `
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: #0b1629; }
   ::-webkit-scrollbar-thumb { background: #1e4490; border-radius: 3px; }
+  .setup-screen, .game-screen { overflow-x: hidden; }
+  .game-layout { display: grid !important; grid-template-columns: 152px minmax(0, 1fr) 152px; grid-template-areas: "team1 board team2"; }
+  .team-panel.team-left { grid-area: team1; }
+  .team-panel.team-right { grid-area: team2; }
+  .game-board { grid-area: board; }
+  .setup-card { width: min(100%, 600px) !important; }
+  .preset-save-row { align-items: stretch; }
+  .answer-input-row { min-width: 0; }
+  @media (max-width: 760px) {
+    .game-screen { padding: 10px 8px 14px !important; }
+    .game-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "team1 team2" "board board"; gap: 8px !important; }
+    .team-panel { width: auto !important; min-width: 0; padding: 12px 8px 11px !important; }
+    .team-panel .team-score { font-size: 42px !important; }
+    .team-panel .team-name { font-size: 15px !important; }
+    .game-board { width: 100%; }
+    .answer-input-row { flex-wrap: wrap; }
+    .answer-input-row input { min-width: 0; flex-basis: 100%; }
+    .answer-input-row button { flex: 1; }
+    .manual-row { flex-wrap: wrap; }
+    .manual-row select { min-width: 0; flex-basis: 100%; }
+  }
+  @media (max-width: 480px) {
+    .setup-screen { padding: 18px 10px 32px !important; gap: 16px !important; }
+    .setup-logo { font-size: 31px !important; letter-spacing: 3px !important; }
+    .setup-card { padding: 18px 14px !important; gap: 18px !important; }
+    .team-name-grid { grid-template-columns: 1fr !important; }
+    .draft-row { gap: 5px !important; }
+    .draft-row input[type=number] { width: 62px !important; }
+    .preset-save-row { flex-direction: column; }
+    .preset-save-row button { width: 100%; }
+    .preset-item { align-items: stretch !important; flex-wrap: wrap; }
+    .preset-item > div:first-child { flex-basis: 100%; }
+    .preset-item button { flex: 1; }
+    .game-title { font-size: 22px !important; letter-spacing: 3px !important; }
+    .question-banner { padding: 10px 12px !important; }
+    .question-banner .question-text { font-size: 14px !important; }
+    .host-controls { padding: 12px 10px !important; }
+    .control-buttons { gap: 5px !important; }
+    .control-buttons > span { flex-basis: 100%; }
+  }
 `;
 
 /* ══════════════════════════════════════════
@@ -143,7 +183,7 @@ function TeamPanel({ name, team, isActive, side, onActivate, roundDone }) {
   return (
     <div
       onClick={!roundDone ? onActivate : undefined}
-      className={isActive ? "team-active" : ""}
+      className={`${isActive ? "team-active " : ""}team-panel team-${side}`}
       style={{
         width: 152,
         flexShrink: 0,
@@ -160,7 +200,7 @@ function TeamPanel({ name, team, isActive, side, onActivate, roundDone }) {
         userSelect: "none",
       }}
     >
-      <div style={{
+      <div className="team-name" style={{
         fontSize: 10,
         fontFamily: "'Oswald', sans-serif",
         letterSpacing: 2,
@@ -182,7 +222,7 @@ function TeamPanel({ name, team, isActive, side, onActivate, roundDone }) {
         {name}
       </div>
 
-      <div style={{
+      <div className="team-score" style={{
         fontSize: 56, fontWeight: 700,
         fontFamily: "'Oswald', sans-serif",
         color: C.white, lineHeight: 1,
@@ -191,7 +231,7 @@ function TeamPanel({ name, team, isActive, side, onActivate, roundDone }) {
         {team.score}
       </div>
 
-      <div style={{
+      <div className="setup-screen" style={{
         fontSize: 10, color: C.muted,
         fontFamily: "'Oswald', sans-serif",
         letterSpacing: 3, textTransform: "uppercase",
@@ -239,7 +279,7 @@ function AnswerTile({ answer, isRevealed, rank }) {
 
       {isRevealed ? (
         <>
-          <div style={{
+          <div className="setup-logo" style={{
             flex: 1, fontSize: 16, fontWeight: 600,
             fontFamily: "'Oswald', sans-serif",
             color: C.white, textTransform: "uppercase", letterSpacing: 1.2,
@@ -255,7 +295,7 @@ function AnswerTile({ answer, isRevealed, rank }) {
           </div>
         </>
       ) : (
-        <div style={{
+        <div className="setup-card" style={{
           flex: 1, height: 11, borderRadius: 5,
           background: `linear-gradient(90deg, ${C.dim} 0%, ${C.blue} 100%)`,
         }} />
@@ -678,7 +718,7 @@ export default function FamilyFeud() {
           </Field>
 
           {/* Team names */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="team-name-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[0, 1].map(i => (
               <Field key={i} label={`Team ${i + 1} Name`}>
                 <input
@@ -719,7 +759,7 @@ export default function FamilyFeud() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {drafts.map((ans, idx) => (
-                <div key={ans.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div key={ans.id} className="draft-row" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ color: C.muted, fontSize: 13, minWidth: 20, textAlign: "right", fontFamily: "'Oswald', sans-serif" }}>
                     {idx + 1}
                   </span>
@@ -778,7 +818,7 @@ export default function FamilyFeud() {
                 Connected to online preset storage
               </div>
             )}
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div className="preset-save-row" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input
                 style={{ ...iStyle, flex: 1 }}
                 value={presetName}
@@ -797,7 +837,7 @@ export default function FamilyFeud() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {presets.map(preset => (
-                  <div key={preset.id} style={{
+                  <div key={preset.id} className="preset-item" style={{
                     display: "flex", alignItems: "center", gap: 8,
                     background: C.blue, border: `1px solid ${C.dim}`,
                     borderRadius: 8, padding: "8px 10px",
@@ -835,7 +875,7 @@ export default function FamilyFeud() {
      GAME SCREEN
   ══════════════════════════════════════════ */
   return (
-    <div style={{
+    <div className="game-screen" style={{
       minHeight: "100vh", background: C.bg, color: C.white,
       fontFamily: "'Open Sans', sans-serif",
       display: "flex", flexDirection: "column",
@@ -889,7 +929,7 @@ export default function FamilyFeud() {
       )}
 
       {/* 3-column layout */}
-      <div style={{
+      <div className="game-layout" style={{
         display: "flex", gap: 10, flex: 1,
         alignItems: "flex-start",
         minHeight: 0,
@@ -905,16 +945,16 @@ export default function FamilyFeud() {
         />
 
         {/* Answer board */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 7, minWidth: 0 }}>
+        <div className="game-board" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 7, minWidth: 0 }}>
           {/* Question banner */}
-          <div style={{
+          <div className="question-banner" style={{
             background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueMid} 100%)`,
             border: `2px solid ${C.gold}`,
             borderRadius: 12, padding: "12px 18px",
             textAlign: "center",
             boxShadow: `0 0 30px ${C.goldGlow}`,
           }}>
-            <div style={{
+            <div className="question-text" style={{
               fontSize: 11, color: C.gold, letterSpacing: 3,
               fontFamily: "'Oswald', sans-serif", marginBottom: 6,
             }}>
@@ -955,7 +995,7 @@ export default function FamilyFeud() {
       </div>
 
       {/* Host control panel */}
-      <div style={{
+      <div className="host-controls" style={{
         background: C.panel,
         border: `1.5px solid ${C.blueLight}`,
         borderRadius: 14, padding: "14px 16px",
@@ -972,7 +1012,7 @@ export default function FamilyFeud() {
         </div>
 
         {/* Answer input row */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="answer-input-row" style={{ display: "flex", gap: 8 }}>
           <input
             ref={inputRef}
             className="host-input"
@@ -1012,7 +1052,7 @@ export default function FamilyFeud() {
         </div>
 
         {/* Control buttons row */}
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="control-buttons" style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
           <ActionBtn
             label="✕  Add Strike"
             color={C.red}
@@ -1063,7 +1103,7 @@ export default function FamilyFeud() {
         </div>
 
         {/* Manual reveal row */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="manual-row" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 11, color: C.muted, flexShrink: 0, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 }}>
             OVERRIDE:
           </span>
