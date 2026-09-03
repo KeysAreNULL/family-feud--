@@ -1,5 +1,39 @@
 # React + Vite
 
+## Persistent Presets with Supabase
+
+The app uses local browser storage until Supabase environment variables are configured. To enable shared hosted presets:
+
+1. Create a Supabase project.
+2. Run this SQL in the Supabase SQL Editor:
+
+```sql
+create table presets (
+	id uuid primary key default gen_random_uuid(),
+	name text not null,
+	title text not null,
+	category text,
+	team_names jsonb not null,
+	question text not null,
+	drafts jsonb not null,
+	created_at timestamptz default now()
+);
+
+alter table presets enable row level security;
+
+create policy "Allow public preset access"
+on presets
+for all
+to anon
+using (true)
+with check (true);
+```
+
+3. In Netlify, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under Site configuration > Environment variables.
+4. Redeploy the site.
+
+Use the Supabase publishable/anon key in the frontend, never the service-role key. The policy above creates one shared preset library and allows anyone with access to the app to add or delete presets. Add authentication and stricter policies before using this for private data.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:
