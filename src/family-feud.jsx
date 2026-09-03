@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { sortAnswersByPoints, getWinningTeamIndex } from "./gameLogic.js";
+import { supabase, supabaseConfigured } from "./supabase.js";
 
 /* ══════════════════════════════════════════
    FUZZY MATCHING
@@ -29,6 +30,16 @@ function fuzzy(inp, ans) {
   return 1 - lev(a, b) / Math.max(a.length, b.length, 1);
 }
 const THRESHOLD = 0.62;
+const PRESETS_KEY = "family-feud-presets";
+
+function readPresets() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PRESETS_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
 
 /* ══════════════════════════════════════════
    STYLE CONSTANTS
@@ -266,7 +277,10 @@ export default function FamilyFeud() {
 
   /* ── Setup form ── */
   const [question, setQuestion]       = useState("");
+  const [category, setCategory]       = useState("");
   const [drafts, setDrafts]           = useState([{ id: 1, text: "", count: "" }]);
+  const [presetName, setPresetName]   = useState("");
+  const [presets, setPresets]         = useState(readPresets);
 
   /* ── Active game ── */
   const [answers, setAnswers]         = useState([]);
@@ -287,10 +301,110 @@ export default function FamilyFeud() {
     return () => clearTimeout(t);
   }, [feedback]);
 
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    let cancelled = false;
+    supabase
+      .from("presets")
+      .select("id, name, title, category, team_names, question, drafts")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setFeedback({ type: "wrong", msg: `Could not load online presets: ${error.message}` });
+          return;
+        }
+        setPresets((data || []).map(preset => ({
+          id: preset.id,
+          name: preset.name,
+          title: preset.title,
+          category: preset.category,
+          teamNames: preset.team_names,
+          question: preset.question,
+          drafts: preset.drafts,
+        })));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   /* ── Setup handlers ── */
   const addDraft = () => setDrafts(p => [...p, { id: Date.now(), text: "", count: "" }]);
   const updDraft = (id, k, v) => setDrafts(p => p.map(a => a.id === id ? { ...a, [k]: v } : a));
   const delDraft = id => setDrafts(p => p.filter(a => a.id !== id));
+
+  const persistLocalPresets = next => {
+    setPresets(next);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
+  };
+
+  const getPresetData = () => ({
+    name: presetName.trim() || title.trim() || "Untitled Game",
+    title,
+    category,
+    team_names: teamNames,
+    question,
+    drafts: drafts.map(({ text, count }) => ({ text, count })),
+  });
+
+  const handleSavePreset = async () => {
+    const presetData = getPresetData();
+    const name = presetData.name;
+    if (supabaseConfigured) {
+      const { data, error } = await supabase
+        .from("presets")
+        .insert(presetData)
+        .select("id, name, title, category, team_names, question, drafts")
+        .single();
+      if (error) {
+        setFeedback({ type: "wrong", msg: `Could not save preset: ${error.message}` });
+        return;
+      }
+      setPresets(p => [{
+        id: data.id,
+        name: data.name,
+        title: data.title,
+        category: data.category,
+        teamNames: data.team_names,
+        question: data.question,
+        drafts: data.drafts,
+      }, ...p]);
+    } else {
+      const preset = {
+        id: Date.now(),
+        ...presetData,
+        teamNames: presetData.team_names,
+      };
+      delete preset.team_names;
+      persistLocalPresets([preset, ...presets]);
+    }
+    setPresetName("");
+    setFeedback({ type: "info", msg: `${supabaseConfigured ? "Saved online preset" : "Saved local preset"}: ${name}` });
+  };
+
+  const handleLoadPreset = preset => {
+    setTitle(preset.title || "FAMILY FEUD");
+    setCategory(preset.category || "");
+    setTeamNames(preset.teamNames?.length === 2 ? preset.teamNames : ["Team 1", "Team 2"]);
+    setQuestion(preset.question || "");
+    const loadedDrafts = (preset.drafts || []).map((draft, index) => ({
+      id: Date.now() + index,
+      text: draft.text || "",
+      count: draft.count ?? "",
+    }));
+    setDrafts(loadedDrafts.length ? loadedDrafts : [{ id: 1, text: "", count: "" }]);
+    setFeedback({ type: "info", msg: `Loaded preset: ${preset.name}` });
+  };
+
+  const handleDeletePreset = async id => {
+    if (supabaseConfigured) {
+      const { error } = await supabase.from("presets").delete().eq("id", id);
+      if (error) {
+        setFeedback({ type: "wrong", msg: `Could not delete preset: ${error.message}` });
+        return;
+      }
+    }
+    persistLocalPresets(presets.filter(preset => preset.id !== id));
+  };
 
   const handleStart = () => {
     const valid = drafts
@@ -463,6 +577,7 @@ export default function FamilyFeud() {
   const handleNewRound = () => {
     setDrafts([{ id: 1, text: "", count: "" }]);
     setQuestion("");
+    setCategory("");
     setPhase("setup");
     setFeedback(null);
     setRoundDone(false);
@@ -586,6 +701,16 @@ export default function FamilyFeud() {
             />
           </Field>
 
+          {/* Category */}
+          <Field label="Category">
+            <input
+              style={iStyle}
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              placeholder="Movies, holidays, family…"
+            />
+          </Field>
+
           {/* Answers */}
           <div>
             <div style={labelSt}>Survey Answers</div>
@@ -644,6 +769,47 @@ export default function FamilyFeud() {
           >
             ▶  Start Game
           </button>
+
+          {/* Saved presets */}
+          <div style={{ borderTop: `1px solid ${C.dim}`, paddingTop: 18 }}>
+            <div style={labelSt}>Saved Game Presets</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                style={{ ...iStyle, flex: 1 }}
+                value={presetName}
+                onChange={e => setPresetName(e.target.value)}
+                placeholder="Preset name (optional)"
+              />
+              <ActionBtn
+                label="Save Preset"
+                color={C.blueLight}
+                disabled={!question.trim() && !drafts.some(a => a.text.trim())}
+                onClick={handleSavePreset}
+              />
+            </div>
+            {presets.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.muted }}>No saved presets yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {presets.map(preset => (
+                  <div key={preset.id} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: C.blue, border: `1px solid ${C.dim}`,
+                    borderRadius: 8, padding: "8px 10px",
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: C.white, fontWeight: 600, fontSize: 13 }}>{preset.name}</div>
+                      <div style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>
+                        {preset.category || "Uncategorized"} · {preset.drafts?.filter(a => a.text).length || 0} answers
+                      </div>
+                    </div>
+                    <ActionBtn label="Load" color={C.green} textColor={C.bg} onClick={() => handleLoadPreset(preset)} />
+                    <ActionBtn label="Delete" color={C.red} onClick={() => handleDeletePreset(preset.id)} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -736,7 +902,7 @@ export default function FamilyFeud() {
               fontSize: 11, color: C.gold, letterSpacing: 3,
               fontFamily: "'Oswald', sans-serif", marginBottom: 6,
             }}>
-              SURVEY SAYS…
+              {category ? `${category.toUpperCase()}  ·  ` : ""}SURVEY SAYS…
             </div>
             <div style={{
               fontSize: 16, fontWeight: 600, color: C.white, lineHeight: 1.4,
