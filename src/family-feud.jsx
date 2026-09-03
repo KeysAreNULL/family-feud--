@@ -773,6 +773,11 @@ export default function FamilyFeud() {
           {/* Saved presets */}
           <div style={{ borderTop: `1px solid ${C.dim}`, paddingTop: 18 }}>
             <div style={labelSt}>Saved Game Presets</div>
+            {supabaseConfigured && (
+              <div style={{ fontSize: 11, color: C.green, marginBottom: 10 }}>
+                Connected to online preset storage
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input
                 style={{ ...iStyle, flex: 1 }}
@@ -807,6 +812,17 @@ export default function FamilyFeud() {
                     <ActionBtn label="Delete" color={C.red} onClick={() => handleDeletePreset(preset.id)} />
                   </div>
                 ))}
+              </div>
+            )}
+            {feedback && (
+              <div style={{
+                marginTop: 10, padding: "9px 12px", borderRadius: 8,
+                background: fbStyle[feedback.type]?.bg ?? "rgba(96,165,250,0.1)",
+                border: `1.5px solid ${fbStyle[feedback.type]?.border ?? "#60a5fa"}`,
+                color: fbStyle[feedback.type]?.color ?? "#93c5fd",
+                fontSize: 13, textAlign: "center",
+              }}>
+                {feedback.msg}
               </div>
             )}
           </div>
